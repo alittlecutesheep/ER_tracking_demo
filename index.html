@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0f7a57">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>急診病人定位 Demo</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+    <link rel="stylesheet" href="styles.css?v=41">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="brand-block">
+          <p class="eyebrow">ED Patient Locator</p>
+          <h1>急診病人定位功能 Demo</h1>
+          <p class="subtitle">依照急診平面圖重繪互動地圖，上方主要出入口作為 RFID 離院判定點。</p>
+        </div>
+        <div class="device-tabs" role="tablist" aria-label="切換展示端">
+          <button class="device-tab is-active" type="button" data-device-tab="desktop" aria-selected="true">
+            <span aria-hidden="true">▣</span>
+            電腦工作站
+          </button>
+          <button class="device-tab" type="button" data-device-tab="mobile" aria-selected="false">
+            <span aria-hidden="true">▤</span>
+            手機值班
+          </button>
+        </div>
+      </header>
+
+      <section class="device-view desktop-view is-active" id="desktopView" aria-label="電腦版急診定位系統">
+        <div class="workspace" id="workspace">
+          <aside class="sidebar" aria-label="側邊欄">
+            <button class="collapse-button" id="collapseSidebar" type="button" aria-expanded="true" aria-label="收合側邊欄">
+              <span aria-hidden="true">☰</span>
+            </button>
+            <div class="sidebar-content">
+              <div class="identity-block">
+                <p class="section-kicker">Role</p>
+                <div class="segmented-control vertical" role="tablist" aria-label="切換身分">
+                  <button class="segment is-active" type="button" data-role-tab="overview">急診總覽</button>
+                  <button class="segment" type="button" data-role-tab="nurse">護理師</button>
+                  <button class="segment" type="button" data-role-tab="doctor">專責醫師</button>
+                </div>
+                <label class="staff-picker">
+                  <span>員工編號</span>
+                  <select id="desktopStaffSelect" data-staff-select aria-label="選擇員工編號"></select>
+                </label>
+              </div>
+
+              <nav class="page-menu" aria-label="頁面選單">
+                <button class="page-menu-button is-active" type="button" data-jump-page="list">
+                  <span>1</span>
+                  病人列表
+                </button>
+                <button class="page-menu-button" type="button" data-jump-page="location">
+                  <span>2</span>
+                  位置追蹤
+                </button>
+                <button class="page-menu-button" type="button" data-jump-page="staff">
+                  <span>3</span>
+                  值班分配
+                </button>
+                <button class="page-menu-button" type="button" data-jump-page="alerts">
+                  <span>4</span>
+                  離院通知
+                </button>
+              </nav>
+
+              <div class="side-summary" id="sideSummary"></div>
+            </div>
+          </aside>
+
+          <main class="stage" aria-label="主要展示頁面">
+            <div class="stage-toolbar">
+              <button class="nav-button" id="prevPage" type="button">
+                <span aria-hidden="true">‹</span>
+                上一頁
+              </button>
+              <div class="page-title-block">
+                <p id="pageEyebrow">Page 1 of 4</p>
+                <h2 id="pageTitle">目前急診病人列表</h2>
+              </div>
+              <button class="nav-button" id="nextPage" type="button">
+                下一頁
+                <span aria-hidden="true">›</span>
+              </button>
+            </div>
+
+            <section class="demo-page is-active" data-page-panel="list" aria-label="目前急診病人列表">
+              <div class="page-intro">
+                <div>
+                  <p class="section-kicker">Current ED Census</p>
+                  <h2>目前急診病人列表與對應編號</h2>
+                  <p>點選病人編號會開啟位置追蹤。叫號按鈕會模擬追蹤器震動，並可取消。</p>
+                </div>
+                <div class="search-box">
+                  <input id="patientSearch" type="search" placeholder="搜尋編號、姓名、房間" autocomplete="off">
+                </div>
+              </div>
+              <div class="patient-list" id="patientList"></div>
+            </section>
+
+            <section class="demo-page" data-page-panel="location" aria-label="病人位置追蹤">
+              <div class="split-page">
+                <div class="tracking-panel">
+                  <div id="selectedCard"></div>
+                  <div class="legend-row" aria-label="圖例">
+                    <span><i class="legend-mark rfid"></i>RFID 房間淡紅框</span>
+                    <span><i class="legend-mark ble"></i>BLE 淡藍光點</span>
+                    <span><i class="legend-mark exit"></i>上方主要出入口</span>
+                  </div>
+                </div>
+                <div class="map-frame">
+                  <div class="ed-map" id="locationMap" aria-label="依急診平面圖重繪的定位圖"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="demo-page" data-page-panel="staff" aria-label="護理師與醫師值班分配">
+              <div class="page-intro">
+                <div>
+                  <p class="section-kicker">Coverage</p>
+                  <h2>依員工編號查看負責病人</h2>
+                  <p>護理師可把病人指派給自己；醫師可查看自己負責的急診病人目前所在位置。</p>
+                </div>
+                <label class="sort-picker">
+                  <span>排序方式</span>
+                  <select id="assignmentSort" data-assignment-sort aria-label="調整值班病人排序">
+                    <option value="mine">自己負責優先</option>
+                    <option value="number">依急診編號</option>
+                    <option value="arrival">依來院時間</option>
+                  </select>
+                </label>
+              </div>
+              <div class="split-page staff-split">
+                <div>
+                  <div class="assignment-list" id="staffAssignments"></div>
+                </div>
+                <div class="map-frame">
+                  <div class="ed-map" id="staffMap" aria-label="員工負責病人定位圖"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="demo-page" data-page-panel="alerts" aria-label="離院通知與外接通路">
+              <div class="page-intro">
+                <div>
+                  <p class="section-kicker">Gate Alerts</p>
+                  <h2>離院計時、特殊病人提醒與保安通知</h2>
+                  <p>一般病人離開上方主要出入口 30 分鐘後通知保安；特殊病人一離開出口立即提醒。</p>
+                </div>
+              </div>
+              <div class="alerts-grid">
+                <section class="subpanel">
+                  <h3>離院追蹤</h3>
+                  <div class="departure-list" id="departureList"></div>
+                </section>
+                <section class="subpanel">
+                  <h3>已發送通知</h3>
+                  <div class="notification-list" id="notificationList"></div>
+                </section>
+                <section class="subpanel integration-panel">
+                  <h3>外接發送通路</h3>
+                  <label class="channel-field">
+                    <span>Webhook Endpoint</span>
+                    <input id="webhookInput" type="text" value="/api/security-alerts">
+                  </label>
+                  <button class="action-button full" id="testWebhook" type="button">
+                    <span aria-hidden="true">↗</span>
+                    測試發送通路
+                  </button>
+                  <pre id="payloadPreview" aria-label="外接 payload 預覽"></pre>
+                </section>
+              </div>
+            </section>
+          </main>
+        </div>
+      </section>
+
+      <section class="device-view mobile-view" id="mobileView" aria-label="手機版急診定位系統">
+        <div class="phone-shell">
+          <header class="phone-header">
+            <div>
+              <p class="section-kicker">Mobile Duty View</p>
+              <h2>行動值班定位</h2>
+            </div>
+            <span class="live-badge">Live</span>
+          </header>
+
+          <div class="mobile-controls">
+            <div class="segmented-control compact" role="tablist" aria-label="手機身分切換">
+              <button class="segment is-active" type="button" data-role-tab="overview">總覽</button>
+              <button class="segment" type="button" data-role-tab="nurse">護理</button>
+              <button class="segment" type="button" data-role-tab="doctor">醫師</button>
+            </div>
+            <label class="staff-picker mobile">
+              <span>員工編號</span>
+              <select id="mobileStaffSelect" data-staff-select aria-label="手機選擇員工編號"></select>
+            </label>
+          </div>
+
+          <div class="mobile-page-status">
+            <button class="nav-button small" id="mobilePrevPage" type="button">‹</button>
+            <div>
+              <p id="mobilePageEyebrow">Page 1 of 4</p>
+              <h2 id="mobilePageTitle">病人列表</h2>
+            </div>
+            <button class="nav-button small" id="mobileNextPage" type="button">›</button>
+          </div>
+
+          <section class="mobile-panel is-active" data-mobile-panel="list">
+            <div class="mobile-list" id="mobilePatientList"></div>
+          </section>
+          <section class="mobile-panel" data-mobile-panel="location">
+            <div id="mobileSelectedCard"></div>
+            <div class="ed-map mobile-map" id="mobileLocationMap"></div>
+          </section>
+          <section class="mobile-panel" data-mobile-panel="staff">
+            <label class="sort-picker mobile-sort">
+              <span>排序方式</span>
+              <select id="mobileAssignmentSort" data-assignment-sort aria-label="手機調整值班病人排序">
+                <option value="mine">自己負責優先</option>
+                <option value="number">依急診編號</option>
+                <option value="arrival">依來院時間</option>
+              </select>
+            </label>
+            <div class="mobile-list" id="mobileStaffAssignments"></div>
+            <div class="ed-map mobile-map" id="mobileStaffMap"></div>
+          </section>
+          <section class="mobile-panel" data-mobile-panel="alerts">
+            <div class="mobile-list" id="mobileAlerts"></div>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <div class="modal-backdrop" id="patientModal" hidden>
+      <section class="patient-modal" aria-label="病人定位詳細資訊" role="dialog" aria-modal="true">
+        <div class="modal-head">
+          <div>
+            <p class="section-kicker">Patient Location</p>
+            <h2 id="modalTitle">病人定位</h2>
+          </div>
+          <button class="icon-button" type="button" id="closeModal" aria-label="關閉">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-info" id="modalInfo"></div>
+          <div class="ed-map modal-map" id="modalMap" aria-label="病人定位放大圖"></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="app.js?v=41"></script>
+  </body>
+</html>
